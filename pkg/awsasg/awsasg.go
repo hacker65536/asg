@@ -3,12 +3,14 @@ package awsasg
 import (
 	"context"
 	"fmt"
+	"log"
 	"regexp"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
+	"github.com/aws/aws-sdk-go-v2/service/autoscaling/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/hacker65536/ec2/pkg/awsec2"
 	"github.com/logrusorgru/aurora"
@@ -164,15 +166,31 @@ func (a *AwsAsg) LsOutput(f string) {
 func (a *AwsAsg) describeAsg() *autoscaling.DescribeAutoScalingGroupsOutput {
 	svc := a.svc
 	params := &autoscaling.DescribeAutoScalingGroupsInput{}
+	maxKeys := 100
+	p := NewASGDescribeAutoScalingGroupsPaginator(svc, params, func(o *ASGDescribeAutoScalingGroupsPaginatorOptions) {
+		if v := int32(maxKeys); v != 0 {
+			o.Limit = v
+		}
+	})
 
-	resp, err := svc.DescribeAutoScalingGroups(context.Background(), params)
+	r := &autoscaling.DescribeAutoScalingGroupsOutput{
+		AutoScalingGroups: []*types.AutoScalingGroup{},
+	}
+	var i int
+	for p.HasMorePages() {
+		i++
+		page, err := p.NextPage((context.TODO()))
+		if err != nil {
+			log.Fatalf("aaaaa")
+		}
+		/*
+			for _, obj := range page.AutoScalingGroups {
+				fmt.Println("asg:=", aws.ToString(obj.AutoScalingGroupName))
+			}
+		*/
 
-	if err != nil {
-		panic("failed to describe autoscaling group, " + err.Error())
+		r.AutoScalingGroups = append(r.AutoScalingGroups, page.AutoScalingGroups...)
 	}
 
-	//	j, _ := json.Marshal(resp)
-	//	fmt.Println(string(j))
-
-	return resp
+	return r
 }
