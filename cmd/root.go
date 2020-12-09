@@ -17,9 +17,8 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
+	"os"
 
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/viper"
@@ -80,7 +79,6 @@ func initConfig() {
 
 		// Search config in home directory with name ".asg" (without extension).
 		viper.AddConfigPath(home)
-		viper.AddConfigPath(".")
 		viper.SetConfigName(".asg")
 	}
 

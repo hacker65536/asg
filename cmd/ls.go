@@ -16,6 +16,8 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/hacker65536/asg/pkg/awsasg"
 	"github.com/spf13/cobra"
 )
@@ -31,13 +33,15 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		//fmt.Println("ls called")
-		aws := awsasg.New()
-		if len(args) == 0 {
-			aws.LsOutput("")
-		} else {
-			aws.LsOutput(args[0])
-		}
+		fmt.Println("ls called")
+
+		/*
+			if len(args) != 0 {
+				fmt.Println(args[0])
+			}
+		*/
+		a := awsasg.New()
+		a.Ls(args)
 	},
 }
 
