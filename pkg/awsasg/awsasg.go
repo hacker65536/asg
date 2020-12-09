@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
+	"strconv"
+	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -13,8 +17,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling/types"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/hacker65536/ec2/pkg/awsec2"
-	"github.com/logrusorgru/aurora"
-	color "github.com/logrusorgru/aurora"
+)
+
+type Color string
+
+const (
+	Reset           Color = "\x1b[0000m"
+	Green           Color = "\x1b[0032m"
+	Yellow          Color = "\x1b[0033m"
+	DefaultText     Color = "\x1b[0039m"
+	BrightWhiteText Color = "\x1b[1;37m"
 )
 
 type AwsAsg struct {
@@ -99,9 +111,21 @@ func (a *AwsAsg) Ls(filter string) Asgs {
 
 func (a *AwsAsg) LsOutput(f string) {
 	l := a.Ls(f)
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 1, 1, ' ', 0)
 	for _, v := range l {
 
-		fmt.Printf("%s [%d/%d]\n", color.Bold(v.Name), len(v.Ec2s), v.Desired)
+		fmt.Fprintln(w, strings.Join([]string{
+
+			//"%s\t[%d/%d]\n", color.Bold(v.Name), len(v.Ec2s), v.Desired)
+			fmt.Sprintf("%v%v%v", BrightWhiteText, v.Name, Reset),
+			func() string {
+				w := strconv.Itoa(len(v.Ec2s))
+				c := strconv.Itoa(int(v.Desired))
+				return "[" + c + "/" + w + "]"
+			}(),
+		}, " "))
+
 		if len(v.Ec2s) > 0 {
 			r := awsec2.New().Ls(
 				&ec2.DescribeInstancesInput{
@@ -124,21 +148,32 @@ func (a *AwsAsg) LsOutput(f string) {
 			}
 			jst, _ := time.LoadLocation("Asia/Tokyo")
 
-			fmt.Println("status\t\tid\t\t\tclass\t\tcreated\t\t\tuptime")
+			fmt.Fprintln(w, strings.Join([]string{
+				fmt.Sprintf("%v%v%v", DefaultText, "status", Reset),
+				"id",
+				"class",
+				"created",
+				"uptime",
+			}, "\t"))
+
 			for _, v2 := range v.Ec2s {
-				fmt.Printf("%s%s\t%s\t%s\t[%s]\t%s\n",
-					func() aurora.Value {
-						if v2.Status == "Healthy" {
-							return color.Green(v2.Status)
-						}
-						return color.Yellow(v2.Status)
-					}(),
+				fmt.Fprintln(w, strings.Join([]string{
 					func() string {
-						if v2.LifeCycle != "InService" {
-							return "*"
+						if v2.Status == "Healthy" {
+							//c := color.Green(v2.Status)
+							//return c.String()
+							return fmt.Sprintf("%v%v%v", Green, v2.Status, Reset)
 						}
-						return " "
+						return fmt.Sprintf("%v%v%v", Yellow, v2.Status, Reset)
 					}(),
+					/*
+						func() string {
+							if v2.LifeCycle != "InService" {
+								return "*"
+							}
+							return " "
+						}(),
+					*/
 					v2.Id,
 					v2.Class,
 					func() string {
@@ -147,19 +182,20 @@ func (a *AwsAsg) LsOutput(f string) {
 						}
 						return ""
 					}(),
-
 					func() string {
 						if v2.LifeCycle == "InService" {
 							return time.Since(aws.ToTime(r2[v2.Id])).Round(60 * time.Second).String()
 						}
 						return ""
 					}(),
+				}, "\t"),
 				)
 			}
 		}
-		fmt.Println()
+		//fmt.Println()
 		//		fmt.Println(r)
 	}
+	w.Flush()
 
 }
 
